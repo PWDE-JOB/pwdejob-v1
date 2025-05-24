@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css">
+    <title>PWDE JOB</title>
+  </head>
+  <body>
+    <form id="jobForm">
+      <input
+        type="text"
+        name="name"
+        id="name"
+        placeholder="Enter your name"
+        required
+      />
+
+      <select name="disability" id="disability" required>
+        <option value="">Select Disability</option>
+        <option value="orthopedic">Orthopedic</option>
+        <option value="weak eyesight">Weak Eyesight</option>
+        <option value="mental problem">Mental Problem</option>
+        <option value="none">None</option>
+      </select>
+
+      <select name="1st_skill" id="1st_skill" required></select>
+      <select name="2nd_skill" id="2nd_skill" required></select>
+      <select name="3rd_skill" id="3rd_skill" required></select>
+
+      <button type="submit">Submit</button>
+    </form>
+
+    <div class="recommended_jobs" id="jobResults"></div>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const skills = [
+          "Photoshop",
+          "Typing",
+          "Sewing",
+          "Excel",
+          "Figma",
+          "Pattern Cutting",
+          "Wood Cutting",
+          "Beading",
+          "Glue Gun",
+          "Craft Assembly",
+          "Tool Handling",
+          "Tire Patching",
+          "SEO",
+          "Blog Writing",
+          "Grammarly",
+          "Zendesk",
+          "Customer Service",
+          "Facebook Ads",
+          "Canva",
+          "Instagram",
+          "TranscribeMe",
+          "Audio Typing",
+        ];
+
+        const skillDropdowns = [
+          document.getElementById("1st_skill"),
+          document.getElementById("2nd_skill"),
+          document.getElementById("3rd_skill"),
+        ];
+
+        // lalagay lahat nung skills sa mga dropdown
+        skillDropdowns.forEach((select) => {
+          skills.forEach((skill) => {
+            const option = document.createElement("option");
+            option.value = skill;
+            option.textContent = skill;
+            select.appendChild(option);
+          });
+        });
+
+        const form = document.getElementById("jobForm");
+        const resultDiv = document.getElementById("jobResults");
+
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const name = document.getElementById("name").value.trim();
+          const disability = document.getElementById("disability").value;
+          const skills = skillDropdowns.map((select) => select.value);
+
+          const payload = {
+            name,
+            disability,
+            skills,
+          };
+
+          try {
+            const response = await fetch("http://127.0.0.1:8000/user", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+
+            // the input json format in the frontend must be like this
+
+            // {
+            // "name": "string",
+            // "disability": "string",
+            // "skills": [
+            //     "string","string","string"
+            // ]
+            // }
+
+
+            // sample output of /user endpoint:
+
+            // {
+            // "status": "Successfull",
+            // "Name": "Josh",
+            // "Disability": "pilay",
+            // "Most Priority Skills": "Photoshop",
+            // "2nd Choice Skill": "Typing",
+            // "3rd Choice Skill": "Sewing",
+            // "Recomeded Jobs": [
+            //     "Graphic Designers Needed",
+            //     "Customer Support Chat Agent",
+            //     "Sewing Machine Operator"
+            // ]
+            // }
+
+            const data = await response.json();
+
+            // Display the result
+            resultDiv.innerHTML = `
+        <h2>Recommended Jobs for ${data.Name}</h2>
+        <p><strong>Disability:</strong> ${data.Disability}</p>
+        <p><strong>Most Priority Skill:</strong> ${
+          data["Most Priority Skills"]
+        }</p>
+        <p><strong>2nd Choice Skill:</strong> ${data["2nd Choice Skill"]}</p>
+        <p><strong>3rd Choice Skill:</strong> ${data["3rd Choice Skill"]}</p>
+        <h3>Recommended Jobs:</h3>
+        <ul>
+          ${data["Recomeded Jobs"].map((job) => `<li>${job}</li>`).join("")}
+        </ul>
+      `;
+          } catch (error) {
+            resultDiv.innerHTML = `<p style="color:red;">Failed to fetch job recommendations. Please try again.</p>`;
+            console.error("Error:", error);
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

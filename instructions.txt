@@ -1,0 +1,33 @@
+To Try:
+1. To create a virtual environment: python -m venv .venv
+2. Activate virtual environment: .venv/Scripts/activate
+(note: make sure nasa proper directory ikaw)
+3. pip install requirements.txt
+
+
+the input json format in the frontend must be like this
+
+{
+  "name": "string",
+  "disability": "string",
+  "skills": [
+    "string","string","string"
+  ]
+}
+
+
+sample output of /user endpoint:
+
+{
+  "status": "Successfull",
+  "Name": "Josh",
+  "Disability": "pilay",
+  "Most Priority Skills": "Photoshop",
+  "2nd Choice Skill": "Typing",
+  "3rd Choice Skill": "Sewing",
+  "Recomeded Jobs": [
+    "Graphic Designers Needed",
+    "Customer Support Chat Agent",
+    "Sewing Machine Operator"
+  ]
+}
