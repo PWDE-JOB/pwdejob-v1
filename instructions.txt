@@ -31,3 +31,95 @@ sample output of /user endpoint:
     "Sewing Machine Operator"
   ]
 }
+
+
+
+def mostPrioJobsBasedOnEachSkills():
+    if not user_temp:
+        return pd.DataFrame()
+    
+    # This weighting is for the users and sample jobs
+    user_frame = pd.DataFrame(user_temp)
+    user_frame['weighted_skills'] = user_frame['skills'].apply(weightingSkills)
+    
+    jobs_frame = sample_jobs.copy()
+    
+    #Check the user have a disability or not
+    if user_frame.iloc[-1]["Disability"].strip().lower() != "none":
+        jobs_frame = jobs_frame[jobs_frame["pwd_accepted?"] == "Yes"]
+        
+    jobs_frame['jobs_info'] = jobs_frame['job_type'].apply(lambda x: ' '.join(x))
+    
+    combined_data = user_frame['weighted_skills'].tolist() + jobs_frame['jobs_info'].tolist()
+    
+    tfidf = TfidfVectorizer()
+    tfidf_matrix = tfidf.fit_transform(combined_data)
+    
+    user_vectors = tfidf_matrix[:len(user_frame)]
+    job_vectors = tfidf_matrix[len(user_frame):]
+    
+    # getting the similarity
+    similarity = cosine_similarity(user_vectors, job_vectors)
+    
+    top_N = 3
+    reccomendations = []
+    
+    for i, user in user_frame.iterrows():
+        sim_scores = list(enumerate(similarity[i]))
+        sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
+        
+        # use jobs_frame isntead of sample_jobs since we filter out already if the user have disability or not just need skills matching
+        top_jobs = [jobs_frame.iloc[idx]['job_title'] for idx, _ in sim_scores[:top_N]]
+        reccomendations.append({
+            "Name": user["Name"],
+            "Recomended Jobs": top_jobs
+        })
+    return reccomendations
+
+
+ {
+  "status": "Successfull",
+  "Name": "Josh",
+  "Disability": "Pilay",
+  "Most Priority Skills": "SEO",
+  "2nd Choice Skill": "Sewing",
+  "3rd Choice Skill": "Instagram",
+  "Recomeded Jobs": [
+    "Social Media Manager",
+    "Carpentry Assistant",
+    "Sewing Machine Operator",
+    "Content Writer",
+    "Graphic Designers Needed"
+  ]
+
+  {
+  "status": "Successfull",
+  "Name": "Josh",
+  "Disability": "Pilay",
+  "Most Priority Skills": "SEO",
+  "2nd Choice Skill": "Sewing",
+  "3rd Choice Skill": "Instagram",
+  "Recomeded Jobs": [
+    "Social Media Manager",
+    "Carpentry Assistant",
+    "Sewing Machine Operator",
+    "Content Writer",
+    "Graphic Designers Needed"
+  ]
+}
+
+{
+  "status": "Successfull",
+  "Name": "Josh",
+  "Disability": "Pilay",
+  "Most Priority Skills": "Photoshop",
+  "2nd Choice Skill": "Typing",
+  "3rd Choice Skill": "Instagram",
+  "Recomeded Jobs": [
+    "Handmade Crafts Assembler",
+    "Social Media Manager",
+    "Graphic Designers Needed",
+    "Content Writer",
+    "Customer Support Chat Agent"
+  ]
+}
