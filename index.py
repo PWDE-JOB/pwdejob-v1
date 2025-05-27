@@ -26,7 +26,7 @@ def root():
 user_temp = []
 
 # Jobs-Type with category
-jobs_type_storage = pd.DataFrame({
+jobs_tags = pd.DataFrame({
     "job_type": [
         "Email Management", "Bookkeeping", "Research", "Basic Programming",
         "Music Production", "Photoshop", "Figma", "Canva", "SEO", "Typing",
@@ -37,10 +37,10 @@ jobs_type_storage = pd.DataFrame({
         "Audio Typing"
     ],
     "category": [
-        "Digital", "Administrative", "Professional", "Digital",
-        "Creative", "Creative", "Creative", "Creative", "Marketing", "Administrative",
-        "Manual", "Manual", "Manual", "Manual",
-        "Creative", "Creative", "Creative", "Mechanical",
+        "Digital Management", "Administrative", "Professional", "Digital Coding",
+        "Creative Audio", "Creative Digital", "Creative Digital", "Creative Digital", "Marketing", "Administrative",
+        "Manual", "Manual", "Labor", "Manual",
+        "Manual", "Manual", "Manual", "Mechanical",
         "Mechanical", "Content Writing", "Content Writing", "Support",
         "Support", "Marketing", "Marketing", "Transcription",
         "Transcription"
@@ -97,6 +97,56 @@ sample_jobs = pd.DataFrame([
         "job_title": "Transcriptionist",
         "pwd_accepted?": "No",
         "job_type": ["TranscribeMe", "Audio Typing"],
+    },
+    {
+        "job_title": "Marketing Specialist",
+        "pwd_accepted?": "No",
+        "job_type": ["SEO", "Email Management"]
+    },
+    {
+        "job_title": "Support Service Representative",
+        "pwd_accepted?": "No",
+        "job_type": ["Customer Service", "Basic Programming", "Research"]
+    },
+    {
+        "job_title": "Creative Digital Creative Specialist",
+        "pwd_accepted?": "No",
+        "job_type": ["Music Production", "Figma"]
+    },
+    {
+        "job_title": "Manual Operator",
+        "pwd_accepted?": "No",
+        "job_type": ["Pattern Cutting"]
+    },
+    {
+        "job_title": "Administrative Assistant",
+        "pwd_accepted?": "No",
+        "job_type": ["Typing"]
+    },
+    {
+        "job_title": "Content Writing Writer",
+        "pwd_accepted?": "Yes",
+        "job_type": ["Glue Gun", "Grammarly"]
+    },
+    {
+        "job_title": "Professional Consultant",
+        "pwd_accepted?": "No",
+        "job_type": ["Beading", "Photoshop", "Research"]
+    },
+    {
+        "job_title": "Support Helpdesk Staff",
+        "pwd_accepted?": "No",
+        "job_type": ["Customer Service"]
+    },
+    {
+        "job_title": "Professional Researcher",
+        "pwd_accepted?": "Yes",
+        "job_type": ["Bookkeeping", "Research"]
+    },
+    {
+        "job_title": "Creative Digital Creative Specialist",
+        "pwd_accepted?": "No",
+        "job_type": ["Tool Handling", "Grammarly", "Figma"]
     }
 ])
 
@@ -108,7 +158,7 @@ def weightingSkills(skills):
     # return ' '.join(
     #     ' '.join([skill]*weight) for skill, weight in zip(skills, weights)
     # )
-    user_categories = jobs_type_storage[jobs_type_storage["job_type"].isin(skills)]["category"]
+    user_categories = jobs_tags[jobs_tags["job_type"].isin(skills)]["category"]
 
     # Count category occurrences
     category_weights = Counter(user_categories)
@@ -117,15 +167,24 @@ def weightingSkills(skills):
 def score_job(job_skills, category_weights):
     score = 0
     for skill in job_skills:
-        category = jobs_type_storage[jobs_type_storage["job_type"] == skill]["category"]
+        category = jobs_tags[jobs_tags["job_type"] == skill]["category"]
         if not category.empty:
             score += category_weights.get(category.values[0], 0)
     return score
+
+# connect each job with primary category (based on job_type to category)
+def inferPrimaryCategory(job_types):
+    categories = jobs_tags[jobs_tags["job_type"].isin(job_types)]["category"].tolist()
+    
+    if categories:
+        return categories[0]
+    else:
+        return "Unknown"
     
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
     
-def creatingRecommendedJobs(skills, disability, alpha=0.8, beta=0.2):
+def creatingRecommendedJobs(skills, disability, alpha=0.8, beta=0.2, top_N=5):
     
     if disability.strip().lower() != "none":
         jobs_to_score = sample_jobs[sample_jobs["pwd_accepted?"] == "Yes"].copy()
@@ -142,17 +201,39 @@ def creatingRecommendedJobs(skills, disability, alpha=0.8, beta=0.2):
     
     #category matching
     category_weights = weightingSkills(skills)
-    print(category_weights)
+    total_weight = sum(category_weights.values())
+    if total_weight == 0:
+        return pd.DataFrame(columns=sample_jobs.columns)
+    
+    
     # Apply scoring
     category_scores  = jobs_to_score["job_type"].apply(lambda x: score_job(x, category_weights))
     print(category_scores)
     
+
     #ADD SCORES OF TIFDIF (THE BOOSTER) and category scores
     jobs_to_score["match_score"] = alpha * cosine_sim + beta * category_scores
-
-    # Sort by best match
-    recommended_jobs = jobs_to_score.sort_values(by="match_score", ascending=False)
-    return recommended_jobs
+        
+    jobs_to_score["primary_category"] = jobs_to_score["job_type"].apply(inferPrimaryCategory)
+    
+    results = []
+    for category, count in category_weights.items():
+        portion = round((count/total_weight) * top_N)
+        top_jobs = jobs_to_score[jobs_to_score["primary_category"] == category]
+        top_jobs = top_jobs.sort_values(by="match_score", ascending=False).head(portion)
+        results.append(top_jobs)
+        
+    
+    # To avoid unsahble types shiiii    
+    df = pd.concat(results)
+    for col in df.columns:
+        if df[col].apply(lambda x: isinstance(x, list)).any():
+            df[col] = df[col].apply(str)
+    
+    #FINALZATION
+    final = df.drop_duplicates().sort_values(by="match_score", ascending=False).head(top_N)
+    
+    return final.reset_index(drop=True)
 
 @app.post("/user")
 async def creationOfUser(user: User):
